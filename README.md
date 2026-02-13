@@ -6,8 +6,8 @@
 
 [**🔴 LIVE DEMO (Click here)**](https://YvesCube.github.io/rust-crafting-master/)
 
-![Rust Crafting Master Preview](https://i.ibb.co/DfwmWLf8/screen.jpg)
-*(You can upload a screenshot of your app to the repository and link it here)*
+![Rust Crafting Master Preview](https://i.ibb.co/9k67vsbs/screen-small.jpg)
+
 
 ## ✨ Features
 
