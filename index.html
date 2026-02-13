@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rust Crafting Calculator</title>
+    <title>Rust Crafting Master</title>
     <style>
-        /* Jednoduchý Rust-like design */
         body {
             background-color: #1b1b1b;
             color: #cecece;
@@ -19,117 +18,203 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            max-width: 500px;
+            max-width: 600px;
             width: 100%;
         }
-        h1 { color: #cd412b; text-align: center; margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; }
-        input {
+        h1 { color: #cd412b; text-align: center; margin-bottom: 20px; font-size: 2em; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; margin-top: 15px;}
+        
+        input, select {
             width: 100%;
             padding: 12px;
-            margin-bottom: 20px;
             background-color: #141414;
             border: 1px solid #444;
             color: white;
             border-radius: 4px;
             font-size: 16px;
-            box-sizing: border-box; /* Aby padding nerozbil šířku */
+            box-sizing: border-box;
         }
+        
         button {
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             background-color: #5f8a2d;
             color: white;
             border: none;
             border-radius: 4px;
             font-size: 18px;
             cursor: pointer;
-            transition: background 0.3s;
+            margin-top: 25px;
+            font-weight: bold;
+            text-transform: uppercase;
         }
         button:hover { background-color: #76aa3b; }
+        
         .result-box {
             margin-top: 25px;
             padding: 20px;
             background-color: #141414;
             border-left: 5px solid #cd412b;
-            display: none; /* Skryté, dokud není výsledek */
+            display: none;
         }
-        .highlight { color: #cd412b; font-weight: bold; }
-        .sub-info { font-size: 0.9em; color: #888; margin-top: 5px; }
+        
+        .big-number { font-size: 1.5em; color: #cd412b; font-weight: bold; }
+        .section-title { color: #888; text-transform: uppercase; font-size: 0.85em; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;}
+        
+        ul { list-style-type: none; padding: 0; }
+        ul li { background: #222; margin-bottom: 5px; padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; }
+        .val { color: #fff; font-weight: bold; }
+        
+        .instruction {
+            background-color: #2a2a35;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+        }
+        .instruction span { color: #6db3f2; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Rust Rocket Calculator</h1>
+    <h1>Rust Crafting Master</h1>
     
-    <label for="sulfur">Kolik máš Sulfuru?</label>
-    <input type="number" id="sulfur" placeholder="Zadej množství (např. 20000)">
+    <label for="itemType">Co chceš vyrábět?</label>
+    <select id="itemType">
+        <option value="rocket">Rocket (Raketa)</option>
+        <option value="c4">C4 (Timed Explosive)</option>
+        <option value="hv">High Velocity Rocket</option>
+    </select>
 
-    <button onclick="calculate()">Spočítat Rakety</button>
+    <label for="sulfur">Kolik máš Sulfuru?</label>
+    <input type="number" id="sulfur" placeholder="Zadej množství (např. 50000)">
+
+    <button onclick="calculate()">Spočítat Crafting</button>
 
     <div id="result" class="result-box">
-        <h3>Výsledek:</h3>
-        <p>Můžeš vyrobit: <span id="rocketCount" class="highlight">0</span> Raket</p>
-        
-        <hr style="border-color: #333; margin: 15px 0;">
-        
-        <p><strong>Plán výroby:</strong></p>
-        <ul>
-            <li>Vyrob Gunpowder: <span id="gpToCraft" class="highlight">0</span> ks</li>
-            <li>Vyrob Explosives: <span id="expToCraft" class="highlight">0</span> ks</li>
-        </ul>
-
-        <div class="sub-info">
-            <p>Na výrobu Gunpowderu budeš potřebovat <span id="charcoalNeeded">0</span> Charcoal.</p>
-            <p><strong>Důležité:</strong> Nech si <span id="sulfurReserved">0</span> surového sulfuru na výrobu Explosives!</p>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div>Můžeš vyrobit:</div>
+            <div id="finalCount" class="big-number">0 KS</div>
+            <div id="itemNameDisplay" style="color:#aaa;"></div>
         </div>
+
+        <div class="section-title">1. MANAŽMENT SULFURU (Postup)</div>
+        <div class="instruction">
+            1. Z tvého sulfuru vezmi přesně <span id="sulfurToGP">0</span> Sulfuru.<br>
+            2. Tento sulfur přeměň na <span id="gpCount">0</span> Gunpowderu.
+        </div>
+        <div class="instruction" id="expInstructionBox">
+            3. Zbylých <span id="sulfurToKeep">0</span> Sulfuru si nechej v inventáři.<br>
+            4. Použij ho na craftění <span id="expCount">0</span> Explosives.
+        </div>
+
+        <div class="section-title">2. DALŠÍ POTŘEBNÉ SUROVINY</div>
+        <ul id="materialsList">
+            </ul>
     </div>
 </div>
 
 <script>
+    // Definice receptů
+    // Ceny jsou za 1 kus finálního produktu
+    const recipes = {
+        rocket: {
+            name: "Rocket",
+            sulfurTotal: 1400,
+            gpPerItem: 650,          // Čistý GP potřebný do itemu + do explosives
+            explosivesPerItem: 10,   // Počet explosives
+            rawSulfurForExp: 100,    // 10 raw sulfuru na 1 explosive * 10
+            other: [
+                {name: "Charcoal", amount: 1950}, // 650 GP * 3
+                {name: "Metal Fragments", amount: 100}, // 10 explosives * 10
+                {name: "Low Grade Fuel", amount: 30},   // 10 explosives * 3
+                {name: "Metal Pipe", amount: 2}
+            ]
+        },
+        c4: {
+            name: "Timed Explosive Charge",
+            sulfurTotal: 2200,
+            gpPerItem: 1000,         // 20 explosives * 50 GP
+            explosivesPerItem: 20,
+            rawSulfurForExp: 200,    // 20 explosives * 10 sulfur
+            other: [
+                {name: "Charcoal", amount: 3000}, // 1000 GP * 3
+                {name: "Metal Fragments", amount: 200}, // 20 exp * 10
+                {name: "Low Grade Fuel", amount: 60},   // 20 exp * 3
+                {name: "Tech Trash", amount: 2},
+                {name: "Cloth", amount: 5}
+            ]
+        },
+        hv: {
+            name: "High Velocity Rocket",
+            sulfurTotal: 200,
+            gpPerItem: 100,          // Jen 100 GP, žádné explosives
+            explosivesPerItem: 0,
+            rawSulfurForExp: 0,
+            other: [
+                {name: "Charcoal", amount: 300}, // 100 GP * 3
+                {name: "Metal Pipe", amount: 1}
+            ]
+        }
+    };
+
     function calculate() {
-        // Získání vstupu
-        const sulfurTotal = parseInt(document.getElementById('sulfur').value);
+        const sulfurInput = parseInt(document.getElementById('sulfur').value);
+        const type = document.getElementById('itemType').value;
+        const recipe = recipes[type];
 
-        if (isNaN(sulfurTotal) || sulfurTotal <= 0) {
-            alert("Zadej prosím platné množství sulfuru.");
+        if (isNaN(sulfurInput) || sulfurInput <= 0) {
+            alert("Zadej prosím množství sulfuru.");
             return;
         }
 
-        // KONSTANTY (Recepty)
-        // 1 Rocket stojí celkem 1400 Sulfuru
-        // Rozpad:
-        // - 10 Explosives (100 Sulfur raw + 500 GP)
-        // - 150 GP (přímo do rakety)
-        // Celkem GP na raketu: 650 GP
-        // Celkem Raw Sulfur na raketu (do explosives): 100 Sulfur
-        
-        const SULFUR_PER_ROCKET = 1400;
-        const GP_PER_ROCKET = 650;
-        const RAW_SULFUR_FOR_EXPLOSIVES_PER_ROCKET = 100;
-        const CHARCOAL_PER_GP = 3; // 30 charcoal na 10 GP -> 3 na 1
-        
-        // Výpočet
-        const maxRockets = Math.floor(sulfurTotal / SULFUR_PER_ROCKET);
-        
-        if (maxRockets === 0) {
-            alert("Nemáš dost sulfuru ani na jednu raketu (min. 1400).");
+        // Hlavní výpočet
+        const maxItems = Math.floor(sulfurInput / recipe.sulfurTotal);
+
+        if (maxItems === 0) {
+            alert(`Na výrobu 1 ${recipe.name} potřebuješ minimálně ${recipe.sulfurTotal} sulfuru.`);
             return;
         }
 
-        const totalGPNeeded = maxRockets * GP_PER_ROCKET;
-        const totalExplosivesNeeded = maxRockets * 10;
-        const rawSulfurReserved = maxRockets * RAW_SULFUR_FOR_EXPLOSIVES_PER_ROCKET;
-        const charcoalNeeded = totalGPNeeded * CHARCOAL_PER_GP;
+        // Výpočty pro instrukce
+        const totalGP = maxItems * recipe.gpPerItem;
+        const sulfurForGP = totalGP * 2; // 1 GP = 2 Sulfur
+        const totalExp = maxItems * recipe.explosivesPerItem;
+        const sulfurReserved = maxItems * recipe.rawSulfurForExp;
 
-        // Zobrazení výsledků
-        document.getElementById('rocketCount').innerText = maxRockets;
-        document.getElementById('gpToCraft').innerText = totalGPNeeded.toLocaleString();
-        document.getElementById('expToCraft').innerText = totalExplosivesNeeded.toLocaleString();
-        document.getElementById('charcoalNeeded').innerText = charcoalNeeded.toLocaleString();
-        document.getElementById('sulfurReserved').innerText = rawSulfurReserved.toLocaleString();
+        // --- VYKRESLENÍ ---
+        
+        // 1. Základní čísla
+        document.getElementById('finalCount').innerText = maxItems + " " + recipe.name;
+        document.getElementById('itemNameDisplay').innerText = "(Zbyde ti " + (sulfurInput - (maxItems * recipe.sulfurTotal)) + " sulfuru)";
 
+        // 2. Instrukce Sulfur/GP
+        document.getElementById('sulfurToGP').innerText = sulfurForGP.toLocaleString();
+        document.getElementById('gpCount').innerText = totalGP.toLocaleString();
+
+        // 3. Instrukce Explosives (skrýt pokud nejsou potřeba - např HV rakety)
+        const expBox = document.getElementById('expInstructionBox');
+        if (recipe.explosivesPerItem > 0) {
+            expBox.style.display = 'block';
+            document.getElementById('sulfurToKeep').innerText = sulfurReserved.toLocaleString();
+            document.getElementById('expCount').innerText = totalExp.toLocaleString();
+        } else {
+            expBox.style.display = 'none';
+        }
+
+        // 4. Seznam dalších surovin
+        const listEl = document.getElementById('materialsList');
+        listEl.innerHTML = ""; // Vymazat starý seznam
+        
+        recipe.other.forEach(mat => {
+            const totalNeeded = mat.amount * maxItems;
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${mat.name}</span> <span class="val">${totalNeeded.toLocaleString()}</span>`;
+            listEl.appendChild(li);
+        });
+
+        // Zobrazit výsledek
         document.getElementById('result').style.display = 'block';
     }
 </script>
