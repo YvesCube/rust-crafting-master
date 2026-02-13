@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rust Crafting Master</title>
+    
+    <meta name="description" content="Kalkulačka pro Rust hráče. Spočítej si přesně, kolik střelného prachu a výbušnin potřebuješ pro craftění raket a C4.">
+    <meta property="og:title" content="Rust Crafting Master">
+    <meta property="og:description" content="Optimalizuj své craftění. Žádná zbytečná síra navíc.">
+    <meta property="og:image" content="https://rustlabs.com/img/items180/ammo.rocket.basic.png"> <meta property="og:type" content="website">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#cd412b">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.11.0/css/flag-icons.min.css"/>
     
     <style>
@@ -23,6 +33,7 @@
             display: flex;
             justify-content: center;
             padding: 20px;
+            margin: 0;
         }
         .container {
             background-color: var(--panel-color);
@@ -44,7 +55,7 @@
         .flag-btn {
             background: #141414;
             border: 2px solid #444;
-            border-radius: 50%; /* Kulaté tlačítko */
+            border-radius: 50%;
             cursor: pointer;
             width: 36px;
             height: 36px;
@@ -52,12 +63,12 @@
             align-items: center;
             justify-content: center;
             transition: 0.2s;
-            overflow: hidden; /* Aby vlajka nepřečuhovala */
+            overflow: hidden;
             padding: 0;
             filter: grayscale(100%);
         }
         .flag-btn span {
-            font-size: 26px; /* Velikost vlajky uvnitř kolečka */
+            font-size: 26px;
             line-height: 1em;
             display: block;
             width: 100%;
@@ -72,7 +83,7 @@
             transform: scale(1.1);
         }
 
-        h1 { color: var(--accent-color); text-align: center; margin-bottom: 20px; margin-top: 0; text-transform: uppercase; letter-spacing: 1px;}
+        h1 { color: var(--accent-color); text-align: center; margin-bottom: 20px; margin-top: 0; text-transform: uppercase; letter-spacing: 1px; font-size: 1.8rem;}
         label { display: block; margin-bottom: 8px; font-weight: bold; margin-top: 15px;}
         
         input, select {
@@ -102,6 +113,22 @@
         }
         button.calc-btn:hover { background-color: var(--btn-hover); }
         
+        /* Install Button styling */
+        #installBtn {
+            display: none; /* Hidden by default */
+            width: 100%;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+        }
+        #installBtn:hover { background-color: #444; }
+
         .result-box {
             margin-top: 25px;
             padding: 20px;
@@ -138,6 +165,8 @@
 <body>
 
 <div class="container">
+    <button id="installBtn">📲 Install App</button>
+
     <div class="lang-buttons">
         <button class="flag-btn active" onclick="setLang('en')" id="btn-en" title="English"><span class="fi fi-us"></span></button>
         <button class="flag-btn" onclick="setLang('cs')" id="btn-cs" title="Čeština"><span class="fi fi-cz"></span></button>
@@ -182,7 +211,34 @@
 </div>
 
 <script>
-    // --- TRANSLATIONS ---
+    // --- PWA INSTALLATION LOGIC ---
+    let deferredPrompt;
+    const installBtn = document.getElementById('installBtn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block'; // Show button
+    });
+
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installBtn.style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+    });
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js');
+        });
+    }
+
+    // --- TRANSLATIONS (Zbytek kódu zůstává stejný) ---
     const translations = {
         en: {
             selectItem: "What to craft?",
@@ -206,7 +262,7 @@
                 c4: "Timed Explosive Charge",
                 hv: "High Velocity Rocket",
                 incen: "Incendiary Rocket",
-                exp556: "Explosive 5.56 Ammo",
+                exp556: "Explosive 5.56 Ammo ",
                 charcoal: "Charcoal",
                 frags: "Metal Fragments",
                 fuel: "Low Grade Fuel",
@@ -237,7 +293,7 @@
                 c4: "C4 (Timed Explosive)",
                 hv: "HV Raketa",
                 incen: "Zápalná Raketa (Incendiary)",
-                exp556: "Explozivní munice 5.56",
+                exp556: "Explozivní munice 5.56 ",
                 charcoal: "Charcoal (Uhlí)",
                 frags: "Metal Fragments",
                 fuel: "Low Grade Fuel",
@@ -268,7 +324,7 @@
                 c4: "C4 (Взрывчатка)",
                 hv: "HV Ракета",
                 incen: "Зажигательная ракета",
-                exp556: "Разрывные патроны",
+                exp556: "Разрывные патроны ",
                 charcoal: "Уголь",
                 frags: "Фрагменты металла",
                 fuel: "Топлево (LGF)",
@@ -385,52 +441,38 @@
 
     function setLang(lang) {
         currentLang = lang;
-        // Update active button state
         document.querySelectorAll('.flag-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById('btn-' + lang).classList.add('active');
-        
         updateTexts();
     }
 
     function updateTexts() {
         const t = translations[currentLang];
-
         document.getElementById('t_selectItem').innerText = t.selectItem;
         document.getElementById('t_enterSulfur').innerText = t.enterSulfur;
         document.getElementById('t_calculateBtn').innerText = t.calculateBtn;
         document.getElementById('t_youCanCraft').innerText = t.youCanCraft;
         document.getElementById('t_sulfurManagement').innerText = t.sulfurManagement;
         document.getElementById('t_otherMaterials').innerText = t.otherMaterials;
-        
         document.getElementById('t_step1').innerText = t.step1;
         document.getElementById('t_step2').innerText = t.step2;
         document.getElementById('t_step3').innerText = t.step3;
-        
         document.getElementById('t_sulfurRaw').innerText = t.sulfurRaw;
         document.getElementById('t_sulfurRaw2').innerText = t.sulfurRaw;
         document.getElementById('t_gp').innerText = t.gp;
         document.getElementById('t_inInventory').innerText = t.inInventory;
 
-        // Populate Select Options (keep selection if possible)
         const select = document.getElementById('itemType');
         const selectedValue = select.value;
-        select.innerHTML = ""; // Clear existing
-        
+        select.innerHTML = "";
         for (const [key, value] of Object.entries(recipes)) {
             const opt = document.createElement('option');
             opt.value = key;
             opt.innerText = t.items[value.id];
             select.appendChild(opt);
         }
-        
-        if (selectedValue && recipes[selectedValue]) {
-            select.value = selectedValue;
-        }
-
-        // Re-calculate if result is visible
-        if(document.getElementById('result').style.display === 'block') {
-            calculate();
-        }
+        if (selectedValue && recipes[selectedValue]) select.value = selectedValue;
+        if(document.getElementById('result').style.display === 'block') calculate();
     }
 
     function calculate() {
@@ -439,9 +481,7 @@
         const recipe = recipes[type];
         const t = translations[currentLang];
 
-        if (isNaN(sulfurInput) || sulfurInput <= 0) {
-            return;
-        }
+        if (isNaN(sulfurInput) || sulfurInput <= 0) return;
 
         const maxItems = Math.floor(sulfurInput / recipe.sulfurTotal);
 
@@ -455,20 +495,14 @@
         const totalExp = maxItems * recipe.explosivesPerItem;
         const sulfurReserved = maxItems * recipe.rawSulfurToKeep;
 
-        // Image
         document.getElementById('resultImage').src = recipe.imgUrl;
 
-        // Numbers
         let countText = maxItems + " x " + t.items[recipe.id];
-        if(recipe.id === 'exp556') {
-             countText += ` (${maxItems * 2} bullets)`;
-        }
-        
+        if(recipe.id === 'exp556') countText += ` (${maxItems * 2} bullets)`;
         document.getElementById('finalCount').innerText = countText;
         
         const leftover = sulfurInput - (maxItems * recipe.sulfurTotal);
         document.getElementById('itemNameDisplay').innerText = `(${t.leftover}: ${leftover})`;
-
         document.getElementById('sulfurToGP').innerText = sulfurForGP.toLocaleString();
         document.getElementById('gpCount').innerText = totalGP.toLocaleString();
 
@@ -479,7 +513,6 @@
         if (recipe.rawSulfurToKeep > 0) {
             expBox.style.display = 'block';
             document.getElementById('sulfurToKeep').innerText = sulfurReserved.toLocaleString();
-            
             if (recipe.explosivesPerItem > 0) {
                 step4Label.innerText = t.step4;
                 document.getElementById('expCount').innerText = totalExp.toLocaleString();
@@ -495,20 +528,16 @@
 
         const listEl = document.getElementById('materialsList');
         listEl.innerHTML = "";
-        
         recipe.other.forEach(mat => {
             const totalNeeded = mat.amount * maxItems;
             const li = document.createElement('li');
             li.innerHTML = `<span>${t.items[mat.id]}</span> <span class="val">${totalNeeded.toLocaleString()}</span>`;
             listEl.appendChild(li);
         });
-
         document.getElementById('result').style.display = 'block';
     }
 
-    // Initialize
     updateTexts();
 </script>
-
 </body>
 </html>
